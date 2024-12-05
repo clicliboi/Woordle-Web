@@ -1,14 +1,30 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
-    <link rel="stylesheet" href="Stylesheets/style.css">
-    
-    <title>Document</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Woordle Game</title>
+  <link rel="stylesheet" href="/assets/Stylesheets/style.css">
+  <script src="/assets/main.js" defer></script>
 </head>
 <body>
-    <header></header>
+  <div id="game-container">
+    <h1>Woordle</h1>
+    <div id="guess-container"></div>
+    <div id="scoreboard">
+      <div id="player-score">
+        <p>Speler 1</p>
+        <p>Score: <span id="score">0</span></p>
+      </div>
+      <div id="leaderboard">
+        <h3>Leaderboard</h3>
+        <ul id="highscores">
+        </ul>
+      </div>
+    </div> 
+    <div id="input-container">
+        <div id="keyboard"></div>
+        <button id="submit-word">Indienen</button>
+      </div>
 </body>
 </html>
