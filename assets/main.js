@@ -7,9 +7,30 @@ document.addEventListener("DOMContentLoaded", () => {
   const popupMessage = document.getElementById("popup-message");
   const popupButton = document.getElementById("popup-button");
   const attemptsElement = document.getElementById("attempts");
+  const timerElement = document.getElementById("timer");
+  const namePopup = document.getElementById("name-popup");
+  const nameInput = document.getElementById("name-input");
+  const nameSubmitButton = document.getElementById("name-submit-button");
+  const leaderboard = document.getElementById("leaderboard");
+  const leaderboardList = document.getElementById("leaderboard-list");
+
+  let playerName = "";
   let score = 0;
   let maxAttempts = 5;
   let attemptsLeft = maxAttempts;
+  let timer;
+  let timeLeft = 30;
+  let gameActive = false;
+
+  nameSubmitButton.addEventListener("click", () => {
+    playerName = nameInput.value.trim();
+    if (playerName) {
+      namePopup.classList.add("hidden");
+      fetchWords();
+    } else {
+      alert("Voer een geldige naam in!");
+    }
+  });
 
   popupButton.addEventListener("click", () => {
     popup.classList.add("hidden");
@@ -32,14 +53,95 @@ document.addEventListener("DOMContentLoaded", () => {
     popup.classList.remove("hidden");
   }
 
+  function startTimer() {
+    timeLeft = 30;
+    updateTimerDisplay();
+    timer = setInterval(() => {
+      timeLeft--;
+      updateTimerDisplay();
+      if (timeLeft <= 0) {
+        clearInterval(timer);
+        endGame("Tijd is om!");
+      }
+    }, 1000);
+  }
+
+  function updateTimerDisplay() {
+    timerElement.textContent = `Tijd over: ${timeLeft}s`;
+  }
+
+  function updateAttemptsDisplay() {
+    attemptsElement.textContent = `Pogingen over: ${attemptsLeft}`;
+  }
+
+  function saveScore() {
+    fetch("https://example.com/save-score", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: playerName, score }),
+    })
+      .then((response) => {
+        if (!response.ok) throw new Error("Score kon niet worden opgeslagen.");
+        return response.json();
+      })
+      .then((data) => {
+        console.log("Score opgeslagen:", data);
+        fetchLeaderboard();
+      })
+      .catch((error) => {
+        console.error("Fout bij het opslaan van de score:", error);
+      });
+  }
+
+  function fetchLeaderboard() {
+    fetch("https://example.com/get-leaderboard")
+      .then((response) => {
+        if (!response.ok) throw new Error("Leaderboard kon niet worden opgehaald.");
+        return response.json();
+      })
+      .then((data) => {
+        displayLeaderboard(data);
+      })
+      .catch((error) => {
+        console.error("Fout bij het ophalen van het leaderboard:", error);
+      });
+  }
+
+  function displayLeaderboard(data) {
+    leaderboardList.innerHTML = "";
+    data.forEach((entry) => {
+      const listItem = document.createElement("li");
+      listItem.textContent = `${entry.name}: ${entry.score}`;
+      leaderboardList.appendChild(listItem);
+    });
+    leaderboard.classList.remove("hidden");
+  }
+
+  function endGame(message) {
+    gameActive = false;
+    showPopup(message);
+    saveScore();
+    disableKeyboard();
+  }
+
+  function disableKeyboard() {
+    const keys = keyboard.querySelectorAll(".key");
+    keys.forEach((key) => {
+      key.classList.add("disabled");
+      key.removeEventListener("click", handleKeyPress);
+    });
+  }
+
   function startGame(words) {
+    gameActive = true;
     let currentWordIndex = 0;
     let currentWord = words[currentWordIndex].toLowerCase();
     let guessedLetters = Array(currentWord.length).fill("");
 
     setupGuessSlots(currentWord.length);
     setupKeyboard(currentWord);
-    updateAttempts();
+    startTimer();
+    updateAttemptsDisplay();
 
     function setupGuessSlots(wordLength) {
       guessContainer.innerHTML = "";
@@ -65,6 +167,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function handleKeyPress(letter, word, keyElement) {
+      if (!gameActive) return;
+
       if (word.includes(letter)) {
         keyElement.classList.add("correct");
         for (let i = 0; i < word.length; i++) {
@@ -84,20 +188,16 @@ document.addEventListener("DOMContentLoaded", () => {
       } else {
         keyElement.classList.add("incorrect");
         attemptsLeft--;
-        updateAttempts();
-
+        updateAttemptsDisplay();
         if (attemptsLeft === 0) {
-          showPopup(`Helaas, je hebt verloren. Het woord was: ${word}.`);
-          setTimeout(nextWord, 1000);
+          endGame(`Helaas, je hebt verloren. Het woord was: ${word}.`);
         }
       }
     }
 
-    function updateAttempts() {
-      attemptsElement.textContent = `Pogingen over: ${attemptsLeft}`;
-    }
-
     function nextWord() {
+      if (!gameActive) return;
+
       currentWordIndex++;
       if (currentWordIndex < words.length) {
         currentWord = words[currentWordIndex].toLowerCase();
@@ -105,12 +205,10 @@ document.addEventListener("DOMContentLoaded", () => {
         setupGuessSlots(currentWord.length);
         setupKeyboard(currentWord);
         attemptsLeft = maxAttempts;
-        updateAttempts();
+        updateAttemptsDisplay();
       } else {
-        showPopup(`Spel voorbij! Jouw score: ${score}`);
+        endGame(`Spel voorbij! Jouw score: ${score}`);
       }
     }
   }
-
-  fetchWords();
 });

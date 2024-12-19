@@ -7,22 +7,21 @@
   <link rel="stylesheet" href="/assets/Stylesheets/style.css">
   <script src="/assets/main.js" defer></script>
 </head>
-<body>
+<body>  
   <div id="game-container">
     <div id="popup" class="hidden">
       <div id="popup-content">
         <p id="popup-message"></p>
         <button id="popup-button">OK</button>
       </div>
-    </div>
-    <p id="attempts">Pogingen over: 5</p>    
+    </div>  
     <h1>Woordle</h1>
     <div id="guess-container"></div>
     <div id="scoreboard">
-      <div id="player-score">
-        <p>Speler 1</p>
-        <p>Score: <span id="score">0</span></p>
-      </div>
+      <div id="status">
+        <div id="attempts">Pogingen over: 5</div>
+        <div id="timer">Tijd over: 30s</div>
+      </div>      
       <div id="leaderboard">
         <h3>Leaderboard</h3>
         <ul id="highscores">
@@ -31,6 +30,11 @@
     </div> 
     <div id="input-container">
         <div id="keyboard"></div>
+      </div>
+      <div id="name-popup" class="popup">
+        <label for="name-input">Voer je naam in:</label>
+        <input type="text" id="name-input" />
+        <button id="name-submit-button">Start Spel</button>
       </div>
 </body>
 </html>
