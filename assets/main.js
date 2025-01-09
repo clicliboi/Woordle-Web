@@ -3,9 +3,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const scoreElement = document.getElementById("score");
     const keyboard = document.getElementById("keyboard");
     const guessContainer = document.getElementById("guess-container");
+    const letters = "abcdefghijklmnopqrstuvwxyz";
     let score = 0;
-  
-  
+
     async function fetchWords() {
       try {
         const response = await fetch('https://random-word-api.vercel.app/api?words=60&length=5');
@@ -25,7 +25,6 @@ document.addEventListener("DOMContentLoaded", () => {
       let currentWord = words[currentWordIndex].toLowerCase();
       let guessedLetters = Array(currentWord.length).fill(""); 
   
-  
       setupGuessSlots(currentWord.length);
       setupKeyboard(currentWord);
   
@@ -40,16 +39,25 @@ document.addEventListener("DOMContentLoaded", () => {
   
       function setupKeyboard(word) {
         keyboard.innerHTML = ""; 
-        const letters = "abcdefghijklmnopqrstuvwxyz";
   
         for (let letter of letters) {
           const key = document.createElement("div");
           key.classList.add("key");
+          key.id = letter
           key.textContent = letter;
   
           key.addEventListener("click", () => handleKeyPress(letter, word, key));
           keyboard.appendChild(key);
         }
+
+        document.addEventListener("keyup", function(event)
+        {
+          if (!letters.includes(event.key)) return;
+
+          console.log(keyboard)
+
+          handleKeyPress(event.key, word, document.getElementById(event.key))
+        })
       }
   
       function handleKeyPress(letter, word, keyElement) {
@@ -62,7 +70,6 @@ document.addEventListener("DOMContentLoaded", () => {
               guessContainer.children[i].textContent = letter;
             }
           }
-  
 
           if (guessedLetters.join("") === word) {
             alert("Goed gedaan! Volgend woord...");
