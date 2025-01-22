@@ -16,11 +16,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let playerName = "";
   let score = 0;
-  let maxAttempts = 5;
+  const maxAttempts = 5;
   let attemptsLeft = maxAttempts;
   let timer;
-  let timeLeft = 30;
+  let timeLeft = 60;
   let gameActive = false;
+  let currentWordIndex = 0;
+  let words = [];
 
   nameSubmitButton.addEventListener("click", () => {
     playerName = nameInput.value.trim();
@@ -33,15 +35,15 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   popupButton.addEventListener("click", () => {
-    popup.classList.add("hidden");
+    location.reload();
   });
 
   async function fetchWords() {
     try {
       const response = await fetch('https://random-word-api.vercel.app/api?words=60&length=5');
       if (!response.ok) throw new Error('Kan woorden niet ophalen.');
-      const words = await response.json();
-      startGame(words);
+      words = await response.json();
+      startGame();
     } catch (error) {
       console.error('Fout bij het ophalen van woorden:', error);
       wordDisplay.textContent = "Fout bij het laden van woorden!";
@@ -51,17 +53,20 @@ document.addEventListener("DOMContentLoaded", () => {
   function showPopup(message) {
     popupMessage.textContent = message;
     popup.classList.remove("hidden");
+    clearInterval(timer);
+    if (message.includes("Probeer opnieuw")) {
+      saveScore(); // Sla de score op als het spel voorbij is
+    }
   }
 
   function startTimer() {
-    timeLeft = 30;
     updateTimerDisplay();
     timer = setInterval(() => {
       timeLeft--;
       updateTimerDisplay();
       if (timeLeft <= 0) {
         clearInterval(timer);
-        endGame("Tijd is om!");
+        endGame("Tijd is om! Probeer opnieuw.");
       }
     }, 1000);
   }
@@ -74,73 +79,27 @@ document.addEventListener("DOMContentLoaded", () => {
     attemptsElement.textContent = `Pogingen over: ${attemptsLeft}`;
   }
 
-  function saveScore() {
-    fetch("https://example.com/save-score", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: playerName, score }),
-    })
-      .then((response) => {
-        if (!response.ok) throw new Error("Score kon niet worden opgeslagen.");
-        return response.json();
-      })
-      .then((data) => {
-        console.log("Score opgeslagen:", data);
-        fetchLeaderboard();
-      })
-      .catch((error) => {
-        console.error("Fout bij het opslaan van de score:", error);
-      });
-  }
-
-  function fetchLeaderboard() {
-    fetch("https://example.com/get-leaderboard")
-      .then((response) => {
-        if (!response.ok) throw new Error("Leaderboard kon niet worden opgehaald.");
-        return response.json();
-      })
-      .then((data) => {
-        displayLeaderboard(data);
-      })
-      .catch((error) => {
-        console.error("Fout bij het ophalen van het leaderboard:", error);
-      });
-  }
-
-  function displayLeaderboard(data) {
-    leaderboardList.innerHTML = "";
-    data.forEach((entry) => {
-      const listItem = document.createElement("li");
-      listItem.textContent = `${entry.name}: ${entry.score}`;
-      leaderboardList.appendChild(listItem);
-    });
-    leaderboard.classList.remove("hidden");
-  }
-
-  function endGame(message) {
-    gameActive = false;
-    showPopup(message);
-    saveScore();
-    disableKeyboard();
-  }
-
-  function disableKeyboard() {
-    const keys = keyboard.querySelectorAll(".key");
-    keys.forEach((key) => {
-      key.classList.add("disabled");
-      key.removeEventListener("click", handleKeyPress);
-    });
-  }
-
-  function startGame(words) {
+  function startGame() {
     gameActive = true;
-    let currentWordIndex = 0;
-    let currentWord = words[currentWordIndex].toLowerCase();
-    let guessedLetters = Array(currentWord.length).fill("");
+    score = 0;
+    currentWordIndex = 0;
+    attemptsLeft = maxAttempts;
+    nextWord();
+    startTimer();
+  }
+
+  function nextWord() {
+    if (currentWordIndex >= words.length) {
+      endGame(`Spel voorbij! Jouw score: ${score}`);
+      return;
+    }
+
+    const currentWord = words[currentWordIndex].toLowerCase();
+    const guessedLetters = Array(currentWord.length).fill("");
 
     setupGuessSlots(currentWord.length);
     setupKeyboard(currentWord);
-    startTimer();
+    attemptsLeft = maxAttempts;
     updateAttemptsDisplay();
 
     function setupGuessSlots(wordLength) {
@@ -179,10 +138,10 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         if (guessedLetters.join("") === word) {
-          showPopup(`Goed gedaan! Het woord was: ${word}.`);
           score++;
           scoreElement.textContent = score;
-
+          currentWordIndex++;
+          clearKeyboardListeners();
           setTimeout(nextWord, 1000);
         }
       } else {
@@ -190,25 +149,62 @@ document.addEventListener("DOMContentLoaded", () => {
         attemptsLeft--;
         updateAttemptsDisplay();
         if (attemptsLeft === 0) {
-          endGame(`Helaas, je hebt verloren. Het woord was: ${word}.`);
+          currentWordIndex++;
+          clearKeyboardListeners();
+          setTimeout(nextWord, 1000);
         }
       }
     }
 
-    function nextWord() {
-      if (!gameActive) return;
-
-      currentWordIndex++;
-      if (currentWordIndex < words.length) {
-        currentWord = words[currentWordIndex].toLowerCase();
-        guessedLetters = Array(currentWord.length).fill("");
-        setupGuessSlots(currentWord.length);
-        setupKeyboard(currentWord);
-        attemptsLeft = maxAttempts;
-        updateAttemptsDisplay();
-      } else {
-        endGame(`Spel voorbij! Jouw score: ${score}`);
-      }
+    function clearKeyboardListeners() {
+      const keys = keyboard.querySelectorAll(".key");
+      keys.forEach(key => {
+        const newKey = key.cloneNode(true);
+        key.parentNode.replaceChild(newKey, key);
+      });
     }
   }
+
+  function endGame(message) {
+    gameActive = false;
+    showPopup(message);
+  }
+
+  async function saveScore() {
+    const response = await fetch('leaderboard.php', {
+      method: 'POST',
+      body: new URLSearchParams({
+        name: playerName,
+        score: score
+      }),
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      }
+    });
+
+    if (response.ok) {
+      const responseText = await response.text();
+      console.log(responseText); // Debugging: controleer de server response
+      loadLeaderboard(); // Laad de leaderboard opnieuw na score opslaan
+    } else {
+      console.error("Er is iets mis gegaan bij het opslaan van de score.");
+    }
+  }
+
+  async function loadLeaderboard() {
+    const response = await fetch('leaderboard.php');
+    if (response.ok) {
+      const leaderboardData = await response.json();
+      leaderboardList.innerHTML = "";
+      leaderboardData.forEach(entry => {
+        const li = document.createElement("li");
+        li.textContent = `${entry.name}: ${entry.score}`;
+        leaderboardList.appendChild(li);
+      });
+    } else {
+      console.error("Er is iets mis gegaan bij het laden van de leaderboard.");
+    }
+  }
+
+  loadLeaderboard(); // Laad de leaderboard bij het laden van de pagina
 });
